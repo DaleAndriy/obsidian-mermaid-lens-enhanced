@@ -1,6 +1,6 @@
-# Contributing to Mermaid Lens
+# Contributing to Mermaid Lens Enhanced
 
-感谢你参与 Mermaid Lens 的开发。提交改动前，请确保测试、类型检查和生产构建均能通过；涉及真实 DOM 或交互的改动还需要在 Obsidian 中验收。
+感谢你参与 Mermaid Lens Enhanced 的开发。提交改动前，请确保测试、类型检查和生产构建均能通过；涉及真实 DOM 或交互的改动还需要在 Obsidian 中验收。
 
 ## 开发环境
 
@@ -11,8 +11,8 @@
 克隆仓库并安装依赖：
 
 ```bash
-git clone https://github.com/aitsuki/obsidian-mermaid-lens.git
-cd obsidian-mermaid-lens
+git clone https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced.git
+cd obsidian-mermaid-lens-enhanced
 npm ci
 ```
 
@@ -56,7 +56,7 @@ npm run deploy
 1. 构建插件。
 2. 创建被 Git 忽略的 `ObsidianTestVault/`。
 3. 将插件部署到 `ObsidianTestVault/.obsidian/plugins/mermaid-lens/`。
-4. 将验收笔记复制到 `ObsidianTestVault/Mermaid Lens Tests/`。
+4. 将验收笔记复制到 `ObsidianTestVault/Mermaid Lens Enhanced Tests/`。
 5. 注册测试 Vault，并通过 Obsidian URI 打开 Vault 和验收清单。
 
 验收笔记覆盖简单、中等和大型图表，以及流程图、时序图、状态图、类图、ER 图、图中链接、重复 SVG ID 和超宽图表。

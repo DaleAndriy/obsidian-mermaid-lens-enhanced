@@ -1,10 +1,10 @@
 {
   "id": "mermaid-lens",
-  "name": "Mermaid Lens",
+  "name": "Mermaid Lens Enhanced",
   "version": "0.2.3",
   "minAppVersion": "1.12.0",
-  "description": "Apply one global Mermaid configuration and open diagrams in a draggable, zoomable viewer.",
-  "author": "aitsuki",
-  "authorUrl": "https://github.com/aitsuki",
+  "description": "Enhance Mermaid diagrams with clear flowchart routing, a shared theme, a pan-and-zoom viewer, and image copying.",
+  "author": "DaleAndriy",
+  "authorUrl": "https://github.com/DaleAndriy",
   "isDesktopOnly": false
 }

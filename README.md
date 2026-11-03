@@ -1,6 +1,6 @@
-# Mermaid Lens
+# Mermaid Lens Enhanced
 
-Mermaid Lens is an Obsidian plugin that applies one shared Mermaid configuration across your vault and opens diagrams in a dedicated pan-and-zoom viewer.
+Mermaid Lens Enhanced is an Obsidian plugin that applies one shared Mermaid configuration across your vault and opens diagrams in a dedicated pan-and-zoom viewer.
 
 [简体中文](README.zh-CN.md)
 
@@ -12,6 +12,8 @@ https://github.com/user-attachments/assets/056c7e1b-5d88-4508-99bb-ded31a615efd
 
 ## Features
 
+- Enhance ordinary Mermaid flowcharts with rounded nodes, dashed decisions, aligned branch labels, and separate routes for incoming and outgoing edges.
+- Copy full diagrams as JPEG images from the viewer.
 - Apply one Mermaid theme, color palette, font, spacing, and layout configuration throughout your vault.
 - Open large or complex diagrams in a viewer unconstrained by the note width.
 - Pan by dragging and zoom with the mouse wheel, toolbar, keyboard, or touch gestures.
@@ -22,24 +24,20 @@ https://github.com/user-attachments/assets/056c7e1b-5d88-4508-99bb-ded31a615efd
 
 ## Installation
 
-Mermaid Lens requires Obsidian 1.12.0 or later.
+Mermaid Lens Enhanced requires Obsidian 1.12.0 or later.
 
-### Community plugins
-
-1. Open **Settings → Community plugins** and turn off Restricted mode if necessary.
-2. Select **Browse** and search for **Mermaid Lens**.
-3. Install and enable the plugin.
+This enhanced fork is distributed through GitHub Releases. It keeps the original `mermaid-lens` plugin ID, so it replaces an existing Mermaid Lens installation in the same folder and keeps its settings.
 
 ### Manual installation
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from [GitHub Releases](https://github.com/aitsuki/obsidian-mermaid-lens/releases).
+1. Download `main.js`, `manifest.json`, and `styles.css` from [GitHub Releases](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases).
 2. Place all three files in:
 
    ```text
    <Vault>/.obsidian/plugins/mermaid-lens/
    ```
 
-3. Reload Obsidian, then enable **Mermaid Lens** under **Settings → Community plugins**.
+3. Reload Obsidian, then enable **Mermaid Lens Enhanced** under **Settings → Community plugins**.
 
 ## Usage
 
@@ -59,7 +57,7 @@ sequenceDiagram
 
 ### Open the viewer
 
-By default, click a Mermaid diagram to open it. You can change the trigger under **Settings → Mermaid Lens** to double-click or the expand button only.
+By default, click a Mermaid diagram to open it. You can change the trigger under **Settings → Mermaid Lens Enhanced** to double-click or the expand button only.
 
 Viewer controls:
 
@@ -75,7 +73,7 @@ Viewer controls:
 
 ### Configure diagram appearance
 
-Open **Settings → Mermaid Lens**, edit **Global Mermaid configuration**, and select **Apply and redraw**. The value must be a JSON object accepted by Mermaid's `initialize()` API. For example:
+Open **Settings → Mermaid Lens Enhanced**, edit **Global Mermaid configuration**, and select **Apply and redraw**. The value must be a JSON object accepted by Mermaid's `initialize()` API. For example:
 
 ```json
 {
@@ -99,8 +97,18 @@ See the [Mermaid configuration reference](https://mermaid.js.org/config/schema-d
 
 - Requires Obsidian 1.12.0 or later.
 - Supports desktop and mobile.
-- Mermaid Lens modifies Obsidian's shared Mermaid configuration. Other plugins that initialize Mermaid may override it depending on plugin load order.
+- Mermaid Lens Enhanced modifies Obsidian's shared Mermaid configuration. Other plugins that initialize Mermaid may override it depending on plugin load order.
 
 ## Development and contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and acceptance-testing instructions.
+
+## Standard Mermaid compatibility
+
+Use ordinary `mermaid` fences for every diagram. Flowcharts automatically receive rounded nodes, dashed decision boxes, pill labels and contrasting subgraph backgrounds. The plugin renders supported diagrams with beautiful-mermaid, including flowchart layout and side connections. Unsupported diagram types and interactive syntax retain a native compatibility fallback. Other diagram types retain their native structures, with global font and color defaults; pie slices use distinct categorical colors. Notes require no special syntax.
+
+The viewer supports full-diagram JPEG clipboard copy with a white background.
+
+## Credits
+
+Based on [Mermaid Lens by aitsuki](https://github.com/aitsuki/obsidian-mermaid-lens), with enhanced rendering powered by [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid). Original copyright and MIT license are retained.

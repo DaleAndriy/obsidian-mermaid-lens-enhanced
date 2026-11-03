@@ -1,13 +1,16 @@
 import { loadMermaid } from "obsidian";
 import { MermaidConfig, mergeConfig } from "./config-utils";
 import { t } from "./i18n";
+import { renderBeautifulDiagram } from "./beautiful-renderer";
 
 export { parseConfigJson } from "./config-utils";
 
 export interface MermaidApi {
   initialize: (config: MermaidConfig) => void;
   getConfig?: () => MermaidConfig;
+  render?: (id: string, source: string, ...args: unknown[]) => Promise<unknown>;
 }
+
 
 type MermaidLoader = () => Promise<MermaidApi>;
 
@@ -17,7 +20,8 @@ async function loadObsidianMermaid(): Promise<MermaidApi> {
     || typeof loaded.initialize !== "function") {
     throw new Error("Obsidian returned an invalid Mermaid API");
   }
-  return loaded as MermaidApi;
+  const api = loaded as MermaidApi;
+  return api;
 }
 
 /**
@@ -32,6 +36,8 @@ export class MermaidConfigManager {
   private baseConfig: MermaidConfig = {};
   private customConfig: MermaidConfig = {};
   private active = false;
+  private originalRender?: MermaidApi["render"];
+  private renderWrapper?: MermaidApi["render"];
 
   constructor(load: MermaidLoader = loadObsidianMermaid) {
     this.load = load;
@@ -65,11 +71,33 @@ export class MermaidConfigManager {
     this.wrapper = wrapper;
     api.initialize = wrapper;
 
+    const originalRender = api.render;
+    if (originalRender) {
+      this.originalRender = originalRender;
+      const renderWrapper: NonNullable<MermaidApi["render"]> = async (id, source, ...args) => {
+        if (!this.active) return originalRender(id, source, ...args);
+        const container = args[0] as { ownerDocument?: Document } | undefined;
+        const ownerDocument = container?.ownerDocument ?? (typeof document === "undefined" ? undefined : document);
+        if (ownerDocument) {
+          try {
+            const svg = renderBeautifulDiagram(id, source, ownerDocument, this.customConfig);
+            if (svg) return { svg };
+          } catch (error) {
+            console.warn("[mermaid-lens] beautiful-mermaid could not render this syntax; using native fallback", error);
+          }
+        }
+        return originalRender(id, source, ...args);
+      };
+      this.renderWrapper = renderWrapper;
+      api.render = renderWrapper;
+    }
+
     try {
       original(mergeConfig(this.baseConfig, config));
     } catch (error) {
       this.active = false;
       if (api.initialize === wrapper) api.initialize = original;
+      if (api.render === this.renderWrapper && this.originalRender) api.render = this.originalRender;
       this.clearReferences();
       throw error;
     }
@@ -101,6 +129,7 @@ export class MermaidConfigManager {
     this.active = false;
 
     if (api && original) {
+      if (api.render === this.renderWrapper && this.originalRender) api.render = this.originalRender;
       if (wrapper && api.initialize === wrapper) api.initialize = original;
       try {
         original(this.baseConfig);
@@ -124,6 +153,8 @@ export class MermaidConfigManager {
     this.api = undefined;
     this.originalInitialize = undefined;
     this.wrapper = undefined;
+    this.originalRender = undefined;
+    this.renderWrapper = undefined;
     this.baseConfig = {};
     this.customConfig = {};
   }

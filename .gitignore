@@ -5,3 +5,9 @@ coverage/
 main.js
 *.log
 .DS_Store
+
+# Local research handoff; excluded from project source and commits.
+/Mermaid Lens渲染增强_交接包/
+
+# Local conversation handoffs.
+/HANDOFF-*.md

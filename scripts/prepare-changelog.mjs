@@ -40,7 +40,7 @@ const unreleasedLink = /^\[Unreleased\]:\s+\S+\s*$/m;
 if (!unreleasedLink.test(updated)) {
   throw new Error("CHANGELOG.md is missing the [Unreleased] comparison link");
 }
-const repositoryUrl = "https://github.com/aitsuki/obsidian-mermaid-lens";
+const repositoryUrl = "https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced";
 updated = updated.replace(
   unreleasedLink,
   `[Unreleased]: ${repositoryUrl}/compare/${version}...HEAD\n[${version}]: ${repositoryUrl}/compare/${previousVersion}...${version}`

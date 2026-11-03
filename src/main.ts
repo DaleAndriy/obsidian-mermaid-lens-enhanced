@@ -77,6 +77,7 @@ export default class MermaidLensPlugin extends Plugin {
     this.registry?.disposeAll();
     this.registry = undefined;
     this.configManager.dispose();
+    this.rerenderOpenMarkdownViews();
   }
 
   async loadSettings(): Promise<void> {

@@ -101,9 +101,7 @@
   touch-action: none;
   user-select: none;
   overscroll-behavior: contain;
-  background-color: var(--background-primary);
-  background-image: radial-gradient(var(--background-modifier-border) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-color: #fff;
 }
 
 .mermaid-lens-stage.is-dragging {

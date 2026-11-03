@@ -1,8 +1,8 @@
-# Mermaid Lens
+# Mermaid Lens Enhanced
 
 [English](README.md)
 
-Mermaid Lens 是一个 Obsidian 插件，用于统一设置笔记中的 Mermaid 图表，并在独立查看器中浏览尺寸较大或内容复杂的图表。
+Mermaid Lens Enhanced 是一个 Obsidian 插件，用于统一设置笔记中的 Mermaid 图表，并在独立查看器中浏览尺寸较大或内容复杂的图表。
 
 | zoom out | zoom in |
 | --- | ---|
@@ -13,6 +13,8 @@ https://github.com/user-attachments/assets/056c7e1b-5d88-4508-99bb-ded31a615efd
 
 ## 主要功能
 
+- **流程图增强**：普通 Mermaid 代码块自动使用圆角节点、虚线判断框和对齐的分支标签；进线、出线分别连接，减少交叉和重叠。
+- **复制完整图片**：在查看器中将整张图复制为 JPG，不受当前缩放和平移影响。
 - **统一图表外观**：在插件设置中集中调整 Mermaid 的主题、颜色、字体、间距和布局参数，配置会应用到整个 Vault 中的 Mermaid 图表。
 - **大图查看器**：在弹窗中查看图表，不受笔记正文宽度限制。
 - **平移与缩放**：支持鼠标拖拽、以光标为中心的滚轮缩放、工具栏缩放、双击适配窗口，以及移动设备上的单指平移和双指缩放。
@@ -25,28 +27,28 @@ https://github.com/user-attachments/assets/056c7e1b-5d88-4508-99bb-ded31a615efd
 
 需要 Obsidian 1.12.0 或更高版本。
 
-### 社区插件市场
-
-1. 打开“设置 → 第三方插件”，关闭受限模式。
-2. 选择“浏览”，搜索 **Mermaid Lens**。
-3. 安装并启用插件。
+增强版通过 GitHub Releases 发布。保留原有 `mermaid-lens` 插件 ID，可在同一目录替换原版并沿用已有设置。
 
 ### 手动安装
 
-1. 从 [GitHub Releases](https://github.com/aitsuki/obsidian-mermaid-lens/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
+1. 从 [GitHub Releases](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
 2. 将三个文件放入以下目录：
 
    ```text
    <Vault>/.obsidian/plugins/mermaid-lens/
    ```
 
-3. 重新加载 Obsidian，然后在“设置 → 第三方插件”中启用 **Mermaid Lens**。
+3. 重新加载 Obsidian，然后在“设置 → 第三方插件”中启用 **Mermaid Lens Enhanced**。
 
 ## 使用
 
 ### 创建 Mermaid 图表
 
 插件不改变 Obsidian 原有的 Mermaid 语法。例如：
+
+所有普通 `mermaid` 代码块都会自动处理，无需修改笔记或添加专用标记。流程图由 beautiful-mermaid 统一布局并增强圆角、虚线判断框、分支标签和分组层次。其余支持的图种也使用 beautiful-mermaid；不支持的图种或链接语法通过原生兼容路径显示。大图查看器提供纯白背景和图片复制。
+
+插件默认的全局 Mermaid 主题也使用同一套浅蓝配色和中文字体栈，应用于其他原生图表的颜色和字体；不会改变这些图表的布局方式。
 
 ````markdown
 ```mermaid
@@ -60,7 +62,7 @@ sequenceDiagram
 
 ### 打开大图
 
-默认情况下，单击图表即可打开查看器。也可以在“设置 → Mermaid Lens”中改为：
+默认情况下，单击图表即可打开查看器。也可以在“设置 → Mermaid Lens Enhanced”中改为：
 
 - 双击图表
 - 仅使用图表右上角的展开按钮
@@ -79,7 +81,7 @@ sequenceDiagram
 
 ### 配置图表外观
 
-进入“设置 → Mermaid Lens”，编辑“全局 Mermaid 配置”，然后点击“应用并重绘”。配置使用 JSON 格式，字段由 Mermaid 定义。例如：
+进入“设置 → Mermaid Lens Enhanced”，编辑“全局 Mermaid 配置”，然后点击“应用并重绘”。配置使用 JSON 格式，字段由 Mermaid 定义。例如：
 
 ```json
 {
@@ -110,4 +112,8 @@ sequenceDiagram
 - 最低支持 Obsidian 1.12.0。
 - 支持桌面端和移动端。
 
-Mermaid Lens 会调整 Obsidian 使用的共享 Mermaid 配置。如果同时启用其他会修改 Mermaid 主题或初始化配置的插件，最终效果可能受插件加载顺序影响。建议避免同时启用功能重叠的 Mermaid 配置插件。
+Mermaid Lens Enhanced 会调整 Obsidian 使用的共享 Mermaid 配置。如果同时启用其他会修改 Mermaid 主题或初始化配置的插件，最终效果可能受插件加载顺序影响。建议避免同时启用功能重叠的 Mermaid 配置插件。
+
+## 致谢
+
+本项目基于 [aitsuki 的 Mermaid Lens](https://github.com/aitsuki/obsidian-mermaid-lens)，增强渲染使用 [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid)。保留原作者版权声明与 MIT 许可。

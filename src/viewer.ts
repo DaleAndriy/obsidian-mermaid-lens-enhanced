@@ -1,5 +1,7 @@
-import { App, Modal, setIcon } from "obsidian";
+import { App, Modal, Notice, setIcon } from "obsidian";
 import { t } from "./i18n";
+
+declare const require: ((moduleName: string) => unknown) | undefined;
 import {
   diagramSize,
   fitView,
@@ -51,6 +53,7 @@ export class MermaidViewerModal extends Modal {
     this.makeButton(controls, "zoom-out", t("viewer.zoomOut"), () => handlers.zoom(1 / 1.2));
     this.makeButton(controls, "scan", t("viewer.fit"), handlers.fit);
     this.makeButton(controls, "zoom-in", t("viewer.zoomIn"), () => handlers.zoom(1.2));
+    this.makeButton(controls, "copy", t("viewer.copyJpeg"), () => { void this.copyAsJpeg(svg); });
 
     this.scope.register([], "+", () => { handlers.zoom(1.2); return false; });
     this.scope.register([], "=", () => { handlers.zoom(1.2); return false; });
@@ -67,6 +70,115 @@ export class MermaidViewerModal extends Modal {
     const button = parent.createEl("button", { attr: { "aria-label": label, title: label } });
     setIcon(button, icon);
     button.addEventListener("click", action);
+  }
+
+  private async copyAsJpeg(svg: SVGSVGElement): Promise<void> {
+    const ownerDocument = svg.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) {
+      new Notice(t("notice.viewerCopyFailed"));
+      return;
+    }
+
+    let objectUrl: string | undefined;
+    try {
+      const size = diagramSize(svg);
+      const exportSvg = svg.cloneNode(true) as SVGSVGElement;
+      exportSvg.style.removeProperty("transform");
+      exportSvg.style.removeProperty("transform-origin");
+      exportSvg.setAttribute("width", String(size.width));
+      exportSvg.setAttribute("height", String(size.height));
+      const scale = Math.min(2, Math.sqrt(16_000_000 / (size.width * size.height)));
+      const canvas = ownerWindow.createEl("canvas");
+      canvas.width = Math.max(1, Math.round(size.width * scale));
+      canvas.height = Math.max(1, Math.round(size.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas is unavailable");
+      context.fillStyle = "#FFFFFF";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Native Mermaid uses HTML labels. Convert only the export copy to SVG text
+      // so rasterization does not taint the canvas with foreignObject content.
+      await ownerDocument.fonts.ready;
+      const originalLabels = Array.from(svg.querySelectorAll<SVGForeignObjectElement>("foreignObject"));
+      exportSvg.querySelectorAll<SVGForeignObjectElement>("foreignObject").forEach((foreignObject, index) => {
+        const original = originalLabels[index];
+        const html = original?.querySelector<HTMLElement>("span, div, p");
+        const css = html ? ownerWindow.getComputedStyle(html) : undefined;
+        const fontSize = Number.parseFloat(css?.fontSize ?? "") || 16;
+        const fontFamily = css?.fontFamily || "sans-serif";
+        const fontWeight = css?.fontWeight || "400";
+        const width = Number.parseFloat(foreignObject.getAttribute("width") ?? "") || 200;
+        const height = Number.parseFloat(foreignObject.getAttribute("height") ?? "") || fontSize * 1.3;
+        const x = Number.parseFloat(foreignObject.getAttribute("x") ?? "0");
+        const y = Number.parseFloat(foreignObject.getAttribute("y") ?? "0");
+        context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+        const lines: string[] = [];
+        const content = html?.innerText || original?.textContent || "";
+        for (const paragraph of content.trim().split(/\n/)) {
+          let line = "";
+          for (const character of paragraph) {
+            if (line && context.measureText(line + character).width > width) {
+              lines.push(line);
+              line = "";
+            }
+            line += character;
+          }
+          lines.push(line);
+        }
+        const text = exportSvg.createSvg("text");
+        text.setAttribute("font-size", String(fontSize));
+        text.setAttribute("font-family", fontFamily);
+        text.setAttribute("font-weight", fontWeight);
+        text.setAttribute("fill", css?.color || "#1769AA");
+        text.setAttribute("text-anchor", "middle");
+        const lineHeight = fontSize * 1.3;
+        lines.forEach((line, lineIndex) => {
+          const span = text.createSvg("tspan");
+          span.setAttribute("x", String(x + width / 2));
+          span.setAttribute("y", String(y + height / 2 + (lineIndex - (lines.length - 1) / 2) * lineHeight + fontSize * 0.35));
+          span.textContent = line;
+        });
+        foreignObject.replaceWith(text);
+      });
+
+      const image = new ownerWindow.Image();
+      const svgBlob = new Blob([new XMLSerializer().serializeToString(exportSvg)], { type: "image/svg+xml;charset=utf-8" });
+      objectUrl = ownerWindow.URL.createObjectURL(svgBlob);
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Could not render SVG"));
+        image.src = objectUrl as string;
+      });
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const jpeg = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not encode JPEG")), "image/jpeg", 0.94);
+      });
+      if (ownerWindow.navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
+        try {
+          await ownerWindow.navigator.clipboard.write([new ClipboardItem({ "image/jpeg": jpeg })]);
+          new Notice(t("notice.viewerCopied"));
+          return;
+        } catch (clipboardError) {
+          console.warn("[mermaid-lens] Browser clipboard write failed; trying Electron clipboard", clipboardError);
+        }
+      }
+
+      const electron = typeof require === "function" ? require("electron") as {
+        clipboard?: { writeImage(image: unknown): void };
+        nativeImage?: { createFromDataURL(dataUrl: string): unknown };
+      } : undefined;
+      if (!electron?.clipboard || !electron.nativeImage) throw new Error("No image clipboard API is available");
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.94);
+      electron.clipboard.writeImage(electron.nativeImage.createFromDataURL(dataUrl));
+      new Notice(t("notice.viewerCopied"));
+    } catch (error) {
+      console.error("[mermaid-lens] Failed to copy diagram as JPEG", error);
+      new Notice(t("notice.viewerCopyFailed"));
+    } finally {
+      if (objectUrl) ownerWindow.URL.revokeObjectURL(objectUrl);
+    }
   }
 
   private setupPanZoom(stage: HTMLElement, svg: SVGSVGElement, size: Size): {

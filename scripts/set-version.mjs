@@ -53,4 +53,4 @@ await Promise.all([
   writeFile("versions.json", `${JSON.stringify(versions, null, 2)}\n`)
 ]);
 
-console.log(`Prepared Mermaid Lens ${version} (Obsidian >= ${manifest.minAppVersion})`);
+console.log(`Prepared ${manifest.name} ${version} (Obsidian >= ${manifest.minAppVersion})`);

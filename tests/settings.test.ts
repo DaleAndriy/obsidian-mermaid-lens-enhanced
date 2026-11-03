@@ -12,10 +12,11 @@ import {
 import { DEFAULT_CONFIG, DEFAULT_SETTINGS, MermaidLensSettingTab, normalizeSettings } from "../src/settings";
 
 describe("default Mermaid config", () => {
-  it("keeps sequence branch descriptions visible outside the label box", () => {
-    expect(DEFAULT_CONFIG.themeVariables.labelTextColor).toBe("#FFFFFF");
-    expect(DEFAULT_CONFIG.themeVariables.loopTextColor).toBe("#334155");
-    expect(DEFAULT_CONFIG.themeVariables.loopTextColor).not.toBe(DEFAULT_CONFIG.themeVariables.actorTextColor);
+  it("uses the light-blue palette and Chinese-capable font stack", () => {
+    expect(DEFAULT_CONFIG.themeVariables.fontFamily).toContain("PingFang SC");
+    expect(DEFAULT_CONFIG.themeVariables.primaryColor).toBe("#E7F3FC");
+    expect(DEFAULT_CONFIG.themeVariables.primaryTextColor).toBe("#1769AA");
+    expect(DEFAULT_CONFIG.themeVariables.edgeLabelBackground).toBe("#F4F9FD");
   });
 });
 

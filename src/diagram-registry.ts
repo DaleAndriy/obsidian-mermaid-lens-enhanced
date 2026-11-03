@@ -2,6 +2,7 @@ import { App, setIcon } from "obsidian";
 import { t } from "./i18n";
 import type { OpenTrigger } from "./settings";
 import { MermaidViewerModal } from "./viewer";
+import { enhanceNativeFlowchart } from "./flowchart-style";
 
 const HOST_SELECTOR = ".mermaid, .mermaid-preview";
 const MOUNTED_CLASS = "mermaid-lens-host";
@@ -79,7 +80,10 @@ export class DiagramRegistry {
     const Observer = document?.defaultView?.MutationObserver;
     if (!Observer) return;
     const observer = new Observer((mutations) => {
-      for (const mutation of mutations) this.scanNow(mutation.target as ParentNode);
+      for (const mutation of mutations) {
+        const target = mutation.target.nodeType === 1 ? mutation.target as Element : mutation.target.parentElement;
+        this.scanNow(target?.closest(HOST_SELECTOR) ?? mutation.target as ParentNode);
+      }
     });
     observer.observe(root, { childList: true, subtree: true });
     this.observers.set(root, observer);
@@ -106,7 +110,9 @@ export class DiagramRegistry {
   }
 
   private mount(host: HTMLElement): void {
-    if (!host.querySelector("svg")) return;
+    const svg = host.querySelector<SVGSVGElement>("svg");
+    if (!svg) return;
+    enhanceNativeFlowchart(svg);
     if (!this.handlers.has(host)) {
       const handlers: HostHandlers = {
         click: (event) => this.handleOpenEvent(host, event, "single"),

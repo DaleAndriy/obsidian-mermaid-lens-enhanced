@@ -134,7 +134,7 @@ if (includeNotes) {
   });
 }
 
-console.log(`\nMermaid Lens 已部署到：\n${pluginDirectory}`);
+console.log(`\n${manifest.name} 已部署到：\n${pluginDirectory}`);
 if (includeNotes) console.log(`验收笔记已复制到：\n${path.join(vault, "Mermaid Lens Tests")}`);
 
 if (openObsidian) {
@@ -146,6 +146,6 @@ if (openObsidian) {
   await launchUri(uri);
   console.log("\n已通过 Obsidian URI 打开该 Vault。若 Vault 已打开，Obsidian 会切换到验收笔记。");
 } else {
-  console.log("\n请在 Obsidian 中打开该 Vault，然后启用或重新加载 Mermaid Lens。");
+  console.log(`\n请在 Obsidian 中打开该 Vault，然后启用或重新加载 ${manifest.name}。`);
 }
 console.log();

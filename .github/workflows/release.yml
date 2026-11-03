@@ -64,9 +64,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          plugin_name="$(node -p "require('./manifest.json').name")"
           gh release create "$GITHUB_REF_NAME" \
             --verify-tag \
-            --title "Mermaid Lens $GITHUB_REF_NAME" \
+            --title "$plugin_name $GITHUB_REF_NAME" \
             --notes-file release-notes.md \
             dist/main.js \
             dist/manifest.json \

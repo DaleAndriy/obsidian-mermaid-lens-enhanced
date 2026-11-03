@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-mermaid-lens",
+  "name": "obsidian-mermaid-lens-enhanced",
   "version": "0.2.3",
-  "description": "Global Mermaid configuration and a pan/zoom viewer for Obsidian.",
+  "description": "Enhance Mermaid diagrams with clear flowchart routing, a shared theme, a pan-and-zoom viewer, and image copying.",
   "main": "dist/main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -17,8 +17,8 @@
     "obsidian",
     "mermaid"
   ],
-  "author": "aitsuki",
-  "repository": "github:aitsuki/obsidian-mermaid-lens",
+  "author": "DaleAndriy",
+  "repository": "github:DaleAndriy/obsidian-mermaid-lens-enhanced",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -31,5 +31,11 @@
     "obsidian": "latest",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10"
-  }
+  },
+  "dependencies": {
+    "beautiful-mermaid": "1.1.3"
+  },
+  "contributors": [
+    "aitsuki"
+  ]
 }

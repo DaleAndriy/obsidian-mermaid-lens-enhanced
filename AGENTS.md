@@ -2,7 +2,7 @@
 
 ## 项目
 
-Mermaid Lens 是一个 Obsidian 插件：统一 Mermaid 配置，并提供可平移、缩放的 SVG 查看器。源码位于 `src/`，构建产物位于被忽略的 `dist/`。
+Mermaid Lens Enhanced 是一个 Obsidian 插件：统一 Mermaid 配置，并提供可平移、缩放的 SVG 查看器。源码位于 `src/`，构建产物位于被忽略的 `dist/`。
 
 ## 常用命令
 
