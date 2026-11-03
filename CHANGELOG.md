@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
 ### Added
 
 - Automatically enhance standard Mermaid flowcharts with rounded nodes, dashed decision boxes, pill labels, and distinct white subgraph containers.
@@ -34,5 +35,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Fixed the alignment and responsive width of the Mermaid JSON configuration editor.
 
-[Unreleased]: https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/compare/0.2.3...HEAD
+[Unreleased]: https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/compare/0.2.3...0.3.0
 [0.2.3]: https://github.com/aitsuki/obsidian-mermaid-lens/compare/0.2.2...0.2.3
