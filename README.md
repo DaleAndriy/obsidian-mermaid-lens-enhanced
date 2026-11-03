@@ -22,6 +22,10 @@ An actual diagram from the [acceptance examples](fixtures/acceptance/04-增强�
 - **Space to explore.** Click a diagram to open a viewer. Drag to pan, zoom around the pointer, and copy the complete diagram as a JPEG, regardless of the current view.
 - **Your notes stay the same.** Keep standard `mermaid` blocks. Unsupported diagram types and syntax fall back to Obsidian's native Mermaid renderer.
 
+## How it differs from the original Mermaid Lens
+
+This fork keeps the original plugin's core purpose and familiar workflow. Its main difference is how supported flowcharts are connected: incoming and outgoing lines use separate connection points, and routes try to avoid sharing lanes and crossing other lines or nodes. The focus is clearer diagrams, not a substantially expanded feature set.
+
 ## Install
 
 1. Download **`main.js`**, **`manifest.json`**, and **`styles.css`** from the [latest release](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases/latest).

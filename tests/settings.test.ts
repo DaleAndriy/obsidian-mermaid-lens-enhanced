@@ -111,13 +111,13 @@ describe("MermaidLensSettingTab", () => {
     plugin.applyConfig.mockResolvedValueOnce(undefined);
     await reset.onClickHandler?.();
     expect(plugin.applyConfig).toHaveBeenLastCalledWith(DEFAULT_SETTINGS.configJson);
-    expect(notices).toContain("已恢复默认 Mermaid 配置");
+    expect(notices).toContain("已恢复 Mermaid Lens 默认配置");
 
     expect((settingComponents[0] as TextAreaComponent).value).toBe(DEFAULT_SETTINGS.configJson);
 
     plugin.applyConfig.mockRejectedValueOnce(new Error("failed"));
     await reset.onClickHandler?.();
-    expect(notices).toContain("恢复默认配置失败，请查看开发者控制台");
+    expect(notices).toContain("恢复 Mermaid Lens 默认配置失败，请查看开发者控制台");
   });
 
   it("persists trigger and button changes and refreshes controls", async () => {

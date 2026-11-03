@@ -22,6 +22,10 @@ Obsidian **1.12+** · 桌面端与移动端 · **MIT** 许可
 - **大图有足够的查看空间。** 单击图表即可打开查看器，拖拽平移、围绕光标缩放，也能把完整图表复制为 JPG，不受当前视野影响。
 - **已有笔记直接可用。** 继续使用普通的 `mermaid` 代码块。增强渲染器不支持的图种和语法，会交回 Obsidian 原生 Mermaid 渲染。
 
+## 和原版 Mermaid Lens 有什么不同
+
+本项目延续了原版的核心用途和常用操作。主要区别在支持的流程图如何走线：进线和出线分开连接，路线会尽量避开其他线和节点，减少共用线段与交叉。重点是让图表更清楚，并没有大幅扩展功能。
+
 ## 安装
 
 1. 从[最新版本](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases/latest)下载 **`main.js`**、**`manifest.json`** 和 **`styles.css`**。

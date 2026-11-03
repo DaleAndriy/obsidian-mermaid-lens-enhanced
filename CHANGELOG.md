@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Spread crowded flowchart columns and add rank spacing only where turns compete for a lane, reducing feedback-loop bends while keeping straight chains compact.
+- Widen rectangular targets within available space to straighten labelled bypass branches without enlarging the diagram.
+
 ## [0.3.0] - 2026-11-03
 ### Added
 

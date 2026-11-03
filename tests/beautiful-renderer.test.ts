@@ -116,6 +116,89 @@ describe("beautiful-mermaid behind standard Mermaid blocks", () => {
     }
   });
 
+  it.each(['TD', 'BT', 'LR', 'RL'])('leaves routing corridors in crowded %s debt cycles', (direction) => {
+    const markdown = readFileSync('fixtures/acceptance/05-债务周期反馈环.md', 'utf8');
+    const sources = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)].map((match) => match[1]);
+    for (const [index, source] of sources.entries()) {
+      const svg = render(source.replace('flowchart TD', `flowchart ${direction}`));
+      expect(svg.getAttribute('data-layout-refined')).toBe('true');
+      expect(svg.querySelectorAll('g.node')).toHaveLength(index === 0 ? 8 : 9);
+      expect(svg.querySelectorAll('polyline.edge')).toHaveLength(index === 0 ? 10 : 11);
+      if (direction === 'TD' || direction === 'BT') {
+        // Keep both reference diagrams compact while retaining simple routes.
+        expect(Number(svg.getAttribute('height'))).toBeLessThan(600);
+      }
+      const nodes = Array.from(svg.querySelectorAll('g.node')).map(boxFor);
+      for (const edge of Array.from(svg.querySelectorAll('polyline.edge'))) {
+        const points = (edge.getAttribute('points') ?? '').split(/\s+/).map((pair) => {
+          const [x, y] = pair.split(',').map(Number); return { x, y };
+        });
+        // The source diagrams need at most two turns; narrow horizontal ports
+        // may need an additional pair to keep incoming/outgoing traffic apart.
+        expect(points.length - 2).toBeLessThanOrEqual(direction === 'TD' || direction === 'BT' ? 2 : 4);
+        for (const segment of [1, points.length - 1]) {
+          const length = Math.abs(points[segment].x - points[segment - 1].x)
+            + Math.abs(points[segment].y - points[segment - 1].y);
+          expect(length).toBeGreaterThanOrEqual(TERMINAL_DISTANCE - 0.01);
+        }
+        points.slice(1).forEach((point, segment) => {
+          expect(Math.min(Math.abs(point.x - points[segment].x), Math.abs(point.y - points[segment].y))).toBeLessThan(0.01);
+          nodes.forEach((node) => expect(crossesBox(points[segment], point, node)).toBe(false));
+        });
+      }
+    }
+  });
+
+  it.each(['TD', 'BT', 'LR', 'RL'])('keeps straight %s chains compact', (direction) => {
+    const svg = render(`flowchart ${direction}\nA[Start] --> B[Middle]\nB --> C[End]`);
+    const vertical = direction === 'TD' || direction === 'BT';
+    const axis = vertical ? 'y' : 'x', dimension = vertical ? 'height' : 'width';
+    const boxes = Array.from(svg.querySelectorAll('g.node')).map(boxFor).sort((a, b) => a[axis] - b[axis]);
+    for (let index = 1; index < boxes.length; index++) {
+      expect(boxes[index][axis] - boxes[index - 1][axis] - boxes[index - 1][dimension])
+        .toBeCloseTo(TERMINAL_DISTANCE * 2);
+    }
+    for (const edge of Array.from(svg.querySelectorAll('polyline.edge'))) {
+      expect((edge.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(2);
+    }
+  });
+
+  it.each(['TD', 'BT'])('widens a %s bypass target without enlarging the diagram', (direction) => {
+    const markdown = readFileSync('fixtures/acceptance/06-宽节点承接长分支.md', 'utf8');
+    const source = /```mermaid\n([\s\S]*?)```/.exec(markdown)?.[1] ?? '';
+    const svg = render(source.replace('flowchart TD', `flowchart ${direction}`));
+    expect(svg.getAttribute('data-layout-refined')).toBe('true');
+    expect(svg.querySelectorAll('g.node')).toHaveLength(9);
+    expect(svg.querySelectorAll('polyline.edge')).toHaveLength(11);
+    expect(Number(svg.getAttribute('width'))).toBeLessThan(1126);
+    expect(Number(svg.getAttribute('height'))).toBeLessThan(direction === 'TD' ? 672 : 680);
+    const target = svg.querySelector('g.node[data-id="E"]')!;
+    const box = boxFor(target);
+    expect(box.width).toBeGreaterThan(400);
+    expect(box.width).toBeLessThan(530);
+    const text = target.querySelector('text')!;
+    const originalX = Number(target.querySelector('rect')?.getAttribute('x'));
+    expect(Number(text.getAttribute('x')) - originalX).toBeCloseTo(box.width / 2);
+    expect(text.textContent).toBe('借款与支出意愿不足');
+    const edge = svg.querySelector('polyline[data-from="C"][data-to="E"]')!;
+    expect((edge.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(2);
+    const boxes = Array.from(svg.querySelectorAll('g.node')).map(boxFor);
+    for (const edge of Array.from(svg.querySelectorAll('polyline.edge'))) {
+      const points = (edge.getAttribute('points') ?? '').trim().split(/\s+/).map((pair) => {
+        const [x, y] = pair.split(',').map(Number); return { x, y };
+      });
+      points.slice(1).forEach((point, index) => {
+        expect(Math.min(Math.abs(point.x - points[index].x), Math.abs(point.y - points[index].y))).toBeLessThan(0.01);
+        boxes.forEach((node) => expect(crossesBox(points[index], point, node)).toBe(false));
+      });
+    }
+    for (let index = 0; index < boxes.length; index++) for (const other of boxes.slice(index + 1)) {
+      const node = boxes[index];
+      expect(node.x < other.x + other.width && other.x < node.x + node.width
+        && node.y < other.y + other.height && other.y < node.y + node.height).toBe(false);
+    }
+  });
+
   it("keeps subgraph containers white and internal nodes blue", () => {
     const svg = render('flowchart TD\nsubgraph Box[分组]\nA[开始] --> B[结束]\nend');
     expect(svg.querySelector('.subgraph rect')?.getAttribute('fill')).toBe('#FFFFFF');
