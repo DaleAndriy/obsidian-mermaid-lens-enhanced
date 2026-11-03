@@ -1,119 +1,97 @@
-# Mermaid Lens Enhanced
+<picture>
+  <source media="(max-width: 600px)" srcset="./assets/readme/hero-zh-mobile.svg">
+  <img src="./assets/readme/hero-zh.svg" width="100%" alt="Mermaid Lens Enhanced：让 Obsidian 里的流程图更清晰，分支与回路线分别连接。">
+</picture>
 
-[English](README.md)
+**照常写 Mermaid，让流程图更易读；大图可以自由缩放，也能整张复制为图片。**
 
-Mermaid Lens Enhanced 是一个 Obsidian 插件，用于统一设置笔记中的 Mermaid 图表，并在独立查看器中浏览尺寸较大或内容复杂的图表。
+[下载插件](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases/latest) · [English](README.md) · [更新记录](CHANGELOG.md)
 
-| zoom out | zoom in |
-| --- | ---|
-| <img width="1920" height="1032" alt="zoom_out" src="https://github.com/user-attachments/assets/8c4a4d00-4f26-43dc-ad41-5b1870aae718" /> | <img width="1920" height="1032" alt="zoom_in_popup" src="https://github.com/user-attachments/assets/2bf8285c-4b39-4736-8de6-e46cb684e918" /> |
+Obsidian **1.12+** · 桌面端与移动端 · **MIT** 许可
 
-https://github.com/user-attachments/assets/056c7e1b-5d88-4508-99bb-ded31a615efd
+## 在 Obsidian 中的实际效果
 
+[![Obsidian 大图查看器中的中文流程图，包含多路分支与反馈循环。](assets/readme/viewer.png)](assets/readme/viewer.png)
 
-## 主要功能
+截图来自项目的[验收示例](fixtures/acceptance/04-增强流程图.md)。点击图片可以查看原图，沿着连线追踪每个分支。
 
-- **流程图增强**：普通 Mermaid 代码块自动使用圆角节点、虚线判断框和对齐的分支标签；进线、出线分别连接，减少交叉和重叠。
-- **复制完整图片**：在查看器中将整张图复制为 JPG，不受当前缩放和平移影响。
-- **统一图表外观**：在插件设置中集中调整 Mermaid 的主题、颜色、字体、间距和布局参数，配置会应用到整个 Vault 中的 Mermaid 图表。
-- **大图查看器**：在弹窗中查看图表，不受笔记正文宽度限制。
-- **平移与缩放**：支持鼠标拖拽、以光标为中心的滚轮缩放、工具栏缩放、双击适配窗口，以及移动设备上的单指平移和双指缩放。
-- **多种打开方式**：可以选择单击、双击或右上角展开按钮；默认使用单击。
-- **兼容图中链接**：点击图表内的链接或按钮时，不会误触发查看器。
-- **安全应用配置**：新配置只有在 JSON 格式正确且 Mermaid 成功接受后才会保存；应用或保存失败时会继续使用上一份有效配置。
-- **自适应笔记宽度**：小图保持自然尺寸，大图不会撑破笔记布局。
+## 有哪些改进
+
+- **连线更容易追踪。** 在支持的流程图中，进线和出线分别连接，减少共用线段，让分支标签对齐，并尽量绕开其他节点。
+- **图表外观更统一。** 默认使用浅蓝圆角节点、虚线判断框、胶囊式标签、白色分组背景，以及支持中文的字体。
+- **大图有足够的查看空间。** 单击图表即可打开查看器，拖拽平移、围绕光标缩放，也能把完整图表复制为 JPG，不受当前视野影响。
+- **已有笔记直接可用。** 继续使用普通的 `mermaid` 代码块。增强渲染器不支持的图种和语法，会交回 Obsidian 原生 Mermaid 渲染。
 
 ## 安装
 
-需要 Obsidian 1.12.0 或更高版本。
-
-增强版通过 GitHub Releases 发布。保留原有 `mermaid-lens` 插件 ID，可在同一目录替换原版并沿用已有设置。
-
-### 手动安装
-
-1. 从 [GitHub Releases](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases) 下载 `main.js`、`manifest.json` 和 `styles.css`。
-2. 将三个文件放入以下目录：
+1. 从[最新版本](https://github.com/DaleAndriy/obsidian-mermaid-lens-enhanced/releases/latest)下载 **`main.js`**、**`manifest.json`** 和 **`styles.css`**。
+2. 将三个文件放入以下目录；目录不存在时，新建即可：
 
    ```text
    <Vault>/.obsidian/plugins/mermaid-lens/
    ```
 
-3. 重新加载 Obsidian，然后在“设置 → 第三方插件”中启用 **Mermaid Lens Enhanced**。
+3. 重新加载 Obsidian，在“设置 → 第三方插件”中启用 **Mermaid Lens Enhanced**。如仍处于受限模式，需先关闭。
 
-## 使用
+从 Mermaid Lens 升级时，直接替换这三个文件即可。增强版保留了 `mermaid-lens` 插件 ID；留下原来的 `data.json`，就能沿用已有设置。
 
-### 创建 Mermaid 图表
+## 试一张流程图
 
-插件不改变 Obsidian 原有的 Mermaid 语法。例如：
-
-所有普通 `mermaid` 代码块都会自动处理，无需修改笔记或添加专用标记。流程图由 beautiful-mermaid 统一布局并增强圆角、虚线判断框、分支标签和分组层次。其余支持的图种也使用 beautiful-mermaid；不支持的图种或链接语法通过原生兼容路径显示。大图查看器提供纯白背景和图片复制。
-
-插件默认的全局 Mermaid 主题也使用同一套浅蓝配色和中文字体栈，应用于其他原生图表的颜色和字体；不会改变这些图表的布局方式。
+将以下内容粘贴到笔记中。切换到实时预览或阅读视图，单击渲染出的图表即可打开查看器。
 
 ````markdown
 ```mermaid
-sequenceDiagram
-    participant App as Android App
-    participant API as 业务服务端
-    App->>API: 请求
-    API-->>App: 响应
+flowchart TD
+    A{审核} -->|通过| B[分享]
+    A -->|修改| C[完善]
 ```
 ````
 
-### 打开大图
+页首的流程图就是插件渲染这段代码的结果。[查看 SVG 原图](assets/readme/example-zh.svg)。
 
-默认情况下，单击图表即可打开查看器。也可以在“设置 → Mermaid Lens Enhanced”中改为：
-
-- 双击图表
-- 仅使用图表右上角的展开按钮
-
-查看器中的操作：
-
-| 操作 | 效果 |
+| 在查看器中 | 操作效果 |
 | --- | --- |
-| 鼠标左键拖拽 | 平移图表 |
-| 鼠标滚轮 | 以光标位置为中心缩放 |
-| `+`、`=`、`-` | 放大或缩小 |
-| 双击查看器 | 重新适配窗口 |
-| 工具栏按钮 | 缩小、适配窗口、放大 |
-| Esc | 关闭查看器 |
-| 移动设备单指/双指 | 平移或缩放 |
+| 拖拽 | 平移图表 |
+| 滚轮或双指缩放 | 放大、缩小 |
+| 双击或点击适配按钮 | 显示完整图表 |
+| 点击复制按钮 | 将整张图复制为 JPG |
+| `+` / `-` | 放大 / 缩小 |
+| `Esc` | 关闭查看器 |
 
-### 配置图表外观
+也可以在“设置 → Mermaid Lens Enhanced”中改为双击打开，或仅通过展开按钮打开。图表中的链接和按钮仍可正常使用。
 
-进入“设置 → Mermaid Lens Enhanced”，编辑“全局 Mermaid 配置”，然后点击“应用并重绘”。配置使用 JSON 格式，字段由 Mermaid 定义。例如：
+## 调整外观
+
+默认主题开箱即可使用。需要自定义时，进入“设置 → Mermaid Lens Enhanced → 全局 Mermaid 配置”，修改 JSON，再点击“应用并重绘”。
+
+<details>
+<summary>一份简单的主题配置</summary>
 
 ```json
 {
   "theme": "base",
   "themeVariables": {
-    "primaryColor": "#EEF2FF",
-    "primaryBorderColor": "#6366F1",
-    "primaryTextColor": "#1E293B",
-    "lineColor": "#64748B"
-  },
-  "sequence": {
-    "actorMargin": 40,
-    "messageMargin": 30
+    "primaryColor": "#E7F3FC",
+    "primaryBorderColor": "#D4E3EE",
+    "primaryTextColor": "#1769AA",
+    "lineColor": "#A6ADB4"
   }
 }
 ```
 
-这份配置表示：使用 Mermaid 的 `base` 主题，自定义图表颜色，并调整时序图中参与者和消息之间的间距。更多字段可参考 [Mermaid 配置文档](https://mermaid.js.org/config/schema-docs/config.html)。
+编辑中的内容只是草稿，点击应用后才会验证和保存。验证、应用或保存失败时，会保留上一份有效配置。“恢复默认配置”可还原插件自带的设置。更多字段见 [Mermaid 配置文档](https://mermaid.js.org/config/schema-docs/config.html)。
 
-编辑框中的内容只是草稿。只有点击“应用并重绘”且配置通过验证后，插件才会保存并重绘当前打开的 Mermaid 图表。“恢复默认配置”可以随时恢复插件自带的初始设置。
+</details>
 
-## 开发与贡献
+## 兼容性与使用范围
 
-源码构建、测试和验收流程请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 最低支持 **Obsidian 1.12.0**，可用于桌面端和移动端；图片复制取决于所在平台的剪贴板能力。
+- 增强渲染支持流程图、时序图、状态图、类图、ER 图和 XY 图。其他图种或不支持的语法使用原生渲染。
+- 额外的连线路由优化用于无分组、矩形节点的流程图；分组图和其他布局保留渲染库的几何结果。复杂图表仍可能出现交叉。
+- 插件会保留已有配置。升级后若想采用浅蓝默认主题，可点击“恢复默认配置”。其他会初始化 Mermaid 的插件可能影响共享配置。
 
-## 兼容性说明
+## 开发与致谢
 
-- 最低支持 Obsidian 1.12.0。
-- 支持桌面端和移动端。
+构建和验收方法见 [CONTRIBUTING.md](CONTRIBUTING.md)，版本变化见 [CHANGELOG.md](CHANGELOG.md)。运行 `node scripts/generate-readme-assets.mjs` 可以重新生成页首插图和 SVG 示例。
 
-Mermaid Lens Enhanced 会调整 Obsidian 使用的共享 Mermaid 配置。如果同时启用其他会修改 Mermaid 主题或初始化配置的插件，最终效果可能受插件加载顺序影响。建议避免同时启用功能重叠的 Mermaid 配置插件。
-
-## 致谢
-
-本项目基于 [aitsuki 的 Mermaid Lens](https://github.com/aitsuki/obsidian-mermaid-lens)，增强渲染使用 [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid)。保留原作者版权声明与 MIT 许可。
+本项目基于 [aitsuki 的 Mermaid Lens](https://github.com/aitsuki/obsidian-mermaid-lens)，增强渲染使用 [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid)。保留原作者版权声明，项目源码采用 [MIT 许可](LICENSE)；打包的依赖保留各自许可，随发布的 JavaScript 一起提供。
