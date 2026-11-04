@@ -32,12 +32,12 @@ Obsidian **1.12+** · 桌面端与移动端 · **MIT** 许可
 2. 将三个文件放入以下目录；目录不存在时，新建即可：
 
    ```text
-   <Vault>/.obsidian/plugins/mermaid-lens/
+   <Vault>/.obsidian/plugins/mermaid-lens-enhanced/
    ```
 
 3. 重新加载 Obsidian，在“设置 → 第三方插件”中启用 **Mermaid Lens Enhanced**。如仍处于受限模式，需先关闭。
 
-从 Mermaid Lens 升级时，直接替换这三个文件即可。增强版保留了 `mermaid-lens` 插件 ID；留下原来的 `data.json`，就能沿用已有设置。
+Mermaid Lens Enhanced 使用独立的插件 ID，可以与原版 Mermaid Lens 分开安装。启用增强版前，请先停用原版。
 
 ## 试一张流程图
 

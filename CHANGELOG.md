@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Give Mermaid Lens Enhanced its own plugin ID to keep community updates for the original plugin from replacing it.
+
 ### Fixed
 
 - Spread crowded flowchart columns and add rank spacing only where turns compete for a lane, reducing feedback-loop bends while keeping straight chains compact.

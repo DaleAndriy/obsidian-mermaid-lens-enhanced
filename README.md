@@ -32,12 +32,12 @@ This fork keeps the original plugin's core purpose and familiar workflow. Its ma
 2. Put the three files in this folder, creating it if needed:
 
    ```text
-   <Vault>/.obsidian/plugins/mermaid-lens/
+   <Vault>/.obsidian/plugins/mermaid-lens-enhanced/
    ```
 
 3. Reload Obsidian, then enable **Mermaid Lens Enhanced** under **Settings → Community plugins**. Turn off Restricted mode if needed.
 
-Upgrading from Mermaid Lens? The enhanced fork keeps the `mermaid-lens` plugin ID. Replace those same three files and keep your existing `data.json` to preserve settings.
+Mermaid Lens Enhanced uses its own plugin ID, so it installs alongside the original Mermaid Lens. Disable the original plugin before enabling this one.
 
 ## Try it
 
