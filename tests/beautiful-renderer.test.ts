@@ -116,6 +116,35 @@ describe("beautiful-mermaid behind standard Mermaid blocks", () => {
     }
   });
 
+  it.each(['TD', 'LR'])('uses A as the reading start in the %s feedback loop', (direction) => {
+    const markdown = readFileSync('fixtures/acceptance/07-简单双向回路.md', 'utf8');
+    const sources = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)].map((match) => match[1]);
+    const svg = render(sources[direction === 'TD' ? 0 : 1]);
+    expect(svg.querySelectorAll('g.node')).toHaveLength(3);
+    expect(Array.from(svg.querySelectorAll('g.edge-label'), (label) => label.getAttribute('data-label'))).toEqual(['是', '否']);
+    const center = (id: string): number => {
+      const node = Array.from(svg.querySelectorAll('g.node')).find((candidate) => candidate.getAttribute('data-id') === id)!;
+      const box = boxFor(node), axis = direction === 'TD' ? 'y' : 'x';
+      return box[axis] + box[axis === 'y' ? 'height' : 'width'] / 2;
+    };
+    expect(center('A')).toBeLessThan(center('B'));
+    expect(center('B')).toBeLessThan(center('C'));
+    const start = svg.querySelector('polyline[data-from="A"][data-to="B"]')!;
+    const feedback = svg.querySelector('polyline[data-from="B"][data-to="A"]')!;
+    const yesBranch = svg.querySelector('polyline[data-from="B"][data-to="C"]')!;
+    expect((start.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(2);
+    expect((yesBranch.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(2);
+    const feedbackPoints = (feedback.getAttribute('points') ?? '').trim().split(/\s+/).map((pair) => pair.split(',').map(Number));
+    expect(feedbackPoints).toHaveLength(4);
+    const laneAxis = direction === 'TD' ? 0 : 1;
+    const nodeStarts = ['A', 'B'].map((id) => {
+      const node = Array.from(svg.querySelectorAll('g.node')).find((candidate) => candidate.getAttribute('data-id') === id)!;
+      const box = boxFor(node);
+      return direction === 'TD' ? box.x : box.y;
+    });
+    expect(feedbackPoints[1][laneAxis]).toBeLessThan(Math.min(...nodeStarts));
+  });
+
   it.each(['TD', 'BT', 'LR', 'RL'])('leaves routing corridors in crowded %s debt cycles', (direction) => {
     const markdown = readFileSync('fixtures/acceptance/05-债务周期反馈环.md', 'utf8');
     const sources = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)].map((match) => match[1]);
@@ -205,5 +234,60 @@ describe("beautiful-mermaid behind standard Mermaid blocks", () => {
     expect(svg.querySelector('.node rect')?.getAttribute('fill')).toBe('var(--_node-fill)');
     expect(svg.querySelector('style')?.textContent).not.toContain('@import');
     expect(svg.querySelector('style')?.textContent).not.toContain('display=swap');
+  });
+
+  it("keeps the short-loop start node to the left of the cycle", () => {
+    const markdown = readFileSync('fixtures/acceptance/08-常见流程图布局样例.md', 'utf8');
+    const source = /## 2\. 短回路与出口[\s\S]*?```mermaid\n([\s\S]*?)```/.exec(markdown)?.[1] ?? '';
+    const svg = render(source);
+    const centerX = (id: string): number => {
+      const node = Array.from(svg.querySelectorAll('g.node')).find((candidate) => candidate.getAttribute('data-id') === id)!;
+      const box = boxFor(node);
+      return box.x + box.width / 2;
+    };
+    expect(centerX('A')).toBeLessThan(centerX('B'));
+    expect(centerX('B')).toBeLessThan(centerX('C'));
+    expect(centerX('C')).toBeLessThan(centerX('D'));
+    const feedback = svg.querySelector('polyline[data-from="C"][data-to="B"]')!;
+    expect((feedback.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(4);
+  });
+
+  it("keeps subgraph children in place and straightens boundary and local flow connections", () => {
+    const markdown = readFileSync('fixtures/acceptance/08-常见流程图布局样例.md', 'utf8');
+    const sources = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)].map((match) => match[1]);
+    const svg = render(sources.at(-1) ?? '');
+    expect(svg.getAttribute('data-layout-refined')).toBe('true');
+    const group = svg.querySelector('g.subgraph > rect')!;
+    const groupBox = { x: Number(group.getAttribute('x')), y: Number(group.getAttribute('y')),
+      width: Number(group.getAttribute('width')), height: Number(group.getAttribute('height')) };
+    for (const id of ['B', 'C', 'D']) {
+      const node = Array.from(svg.querySelectorAll('g.node')).find((candidate) => candidate.getAttribute('data-id') === id)!;
+      const box = boxFor(node);
+      expect(box.x).toBeGreaterThanOrEqual(groupBox.x);
+      expect(box.y).toBeGreaterThanOrEqual(groupBox.y);
+      expect(box.x + box.width).toBeLessThanOrEqual(groupBox.x + groupBox.width);
+      expect(box.y + box.height).toBeLessThanOrEqual(groupBox.y + groupBox.height);
+    }
+    const path = (from: string, to: string): { x: number; y: number }[] => {
+      const edge = svg.querySelector(`polyline[data-from="${from}"][data-to="${to}"]`)!;
+      return (edge.getAttribute('points') ?? '').trim().split(/\s+/).map((pair) => {
+        const [x, y] = pair.split(',').map(Number); return { x, y };
+      });
+    };
+    for (const edge of Array.from(svg.querySelectorAll('polyline.edge'))) {
+      const points = (edge.getAttribute('points') ?? '').trim().split(/\s+/).map((pair) => {
+        const [x, y] = pair.split(',').map(Number); return { x, y };
+      });
+      points.slice(1).forEach((point, index) => {
+        expect(Math.min(Math.abs(point.x - points[index].x), Math.abs(point.y - points[index].y))).toBeLessThan(0.01);
+      });
+    }
+    expect(path('B', 'D')).toHaveLength(2);
+    expect(path('B', 'C')).toHaveLength(2);
+    expect(path('A', 'B')).toHaveLength(3);
+    expect(path('C', 'E')).toHaveLength(3);
+    const feedback = path('D', 'B');
+    expect(feedback).toHaveLength(4);
+    expect(feedback[1].x).toBeGreaterThan(groupBox.x + groupBox.width + 16);
   });
 });

@@ -66,7 +66,7 @@ export function renderBeautifulDiagram(id: string, source: string, document: Doc
       });
       group.querySelectorAll(":scope > text").forEach((text) => text.setAttribute("fill", "#20252A"));
     });
-    refineFlowchartLayout(svg, graph?.direction ?? "TD");
+    refineFlowchartLayout(svg, graph?.direction ?? "TD", graph?.subgraphs ?? []);
   }
   remapSvgIds(svg);
   const Serializer = document.defaultView?.XMLSerializer ?? XMLSerializer;

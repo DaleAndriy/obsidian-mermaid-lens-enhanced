@@ -9,6 +9,7 @@ const EPSILON = 0.01;
 type Side = "left" | "right" | "top" | "bottom";
 interface NodeBox extends RouteBox { id: string; element: SVGGElement; original: RouteBox }
 interface LabelBox extends RouteBox { element: SVGGElement; original: RouteBox; aligned: boolean }
+interface FlowchartSubgraph { id?: string; nodeIds: string[]; direction?: string; children?: FlowchartSubgraph[] }
 interface EdgeRoute {
   element: SVGPolylineElement; source: NodeBox; target: NodeBox;
   startSide: Side; endSide: Side; start: RoutePoint; end: RoutePoint;
@@ -219,38 +220,48 @@ function overlaps(a: RouteBox, b: RouteBox): boolean {
 }
 
 /** Widen a downstream box only when it can accept a clear, labelled bypass. */
-function widenBypassTargets(nodes: NodeBox[], routes: EdgeRoute[]): void {
-  const left = Math.min(...nodes.map((node) => node.x));
-  const right = Math.max(...nodes.map((node) => node.x + node.width));
+function widenBypassTargets(nodes: NodeBox[], routes: EdgeRoute[], direction: string): void {
+  const vertical = direction === "TD" || direction === "TB" || direction === "BT";
+  const axis = vertical ? "y" : "x";
+  const cross = vertical ? "x" : "y";
+  const crossDimension = vertical ? "width" : "height";
+  const forwardSign = direction === "BT" || direction === "RL" ? -1 : 1;
+  const forward: Side = direction === "LR" ? "right" : direction === "RL" ? "left" : direction === "BT" ? "top" : "bottom";
+  const backward: Side = direction === "LR" ? "left" : direction === "RL" ? "right" : direction === "BT" ? "bottom" : "top";
+  const lowBound = Math.min(...nodes.map((node) => node[cross]));
+  const highBound = Math.max(...nodes.map((node) => node[cross] + node[crossDimension]));
   for (const edge of routes) {
-    if (!edge.label || !((edge.startSide === "bottom" && edge.endSide === "top" && edge.end.y > edge.start.y)
-      || (edge.startSide === "top" && edge.endSide === "bottom" && edge.end.y < edge.start.y))) continue;
+    if (!edge.label || edge.startSide !== forward || edge.endSide !== backward
+      || (edge.end[axis] - edge.start[axis]) * forwardSign <= EPSILON) continue;
     const target = edge.target;
     const obstacles = nodes.filter((node) => node !== edge.source && node !== target).map((node) => inflate(node, CLEARANCE));
-    const blocked = (x: number): boolean => obstacles.some((box) => crossesBox(
-      { x, y: edge.start.y }, { x, y: edge.end.y }, box));
-    if (!blocked(edge.end.x) || blocked(edge.start.x)) continue;
-    const growRight = edge.start.x > target.x + target.width - CLEARANCE;
-    const growLeft = edge.start.x < target.x + CLEARANCE;
-    if (!growRight && !growLeft) continue;
-    let coordinate = edge.start.x;
+    const blocked = (coordinate: number): boolean => obstacles.some((box) => crossesBox(
+      vertical ? { x: coordinate, y: edge.start.y } : { x: edge.start.x, y: coordinate },
+      vertical ? { x: coordinate, y: edge.end.y } : { x: edge.end.x, y: coordinate }, box));
+    if (!blocked(edge.end[cross]) || blocked(edge.start[cross])) continue;
+    const growHigh = edge.start[cross] > target[cross] + target[crossDimension] - CLEARANCE;
+    const growLow = edge.start[cross] < target[cross] + CLEARANCE;
+    if (!growHigh && !growLow) continue;
+    let coordinate = edge.start[cross];
     // Branch labels share a rank: leave room for neighbouring labels as well.
     for (const other of routes) {
       if (other === edge || other.source !== edge.source || !other.label || other.startSide !== edge.startSide) continue;
       const gap = (edge.label.width + other.label.width) / 2 + CLEARANCE;
-      if (growRight && other.end.x < edge.start.x) coordinate = Math.max(coordinate, other.end.x + gap);
-      if (growLeft && other.end.x > edge.start.x) coordinate = Math.min(coordinate, other.end.x - gap);
+      if (growHigh && other.end[cross] < edge.start[cross]) coordinate = Math.max(coordinate, other.end[cross] + gap);
+      if (growLow && other.end[cross] > edge.start[cross]) coordinate = Math.min(coordinate, other.end[cross] - gap);
     }
-    if (coordinate < edge.source.x + CLEARANCE || coordinate > edge.source.x + edge.source.width - CLEARANCE) continue;
-    const fraction = (edge.end.x - target.x) / target.width;
-    const width = growRight ? (coordinate - target.x) / fraction
-      : (target.x + target.width - coordinate) / (1 - fraction);
-    if (!Number.isFinite(width) || width <= target.width || width > target.original.width * 3) continue;
-    const candidate = { ...target, x: growLeft ? target.x + target.width - width : target.x, width };
-    if (candidate.x < left || candidate.x + candidate.width > right) continue;
+    if (coordinate < edge.source[cross] + CLEARANCE
+      || coordinate > edge.source[cross] + edge.source[crossDimension] - CLEARANCE) continue;
+    const fraction = (edge.end[cross] - target[cross]) / target[crossDimension];
+    const size = growHigh ? (coordinate - target[cross]) / fraction
+      : (target[cross] + target[crossDimension] - coordinate) / (1 - fraction);
+    if (!Number.isFinite(size) || size <= target[crossDimension] || size > target.original[crossDimension] * 3) continue;
+    const position = growLow ? target[cross] + target[crossDimension] - size : target[cross];
+    const candidate = { ...target, [cross]: position, [crossDimension]: size };
+    if (position < lowBound || position + size > highBound) continue;
     if (blocked(coordinate) || nodes.some((node) => node !== target && overlaps(candidate, inflate(node, CLEARANCE)))) continue;
     const previous = { ...target };
-    target.x = candidate.x; target.width = width;
+    target[cross] = position; target[crossDimension] = size;
     for (const route of routes) {
       for (const endpoint of ["start", "end"] as const) {
         if ((endpoint === "start" ? route.source : route.target) !== target) continue;
@@ -264,9 +275,323 @@ function widenBypassTargets(nodes: NodeBox[], routes: EdgeRoute[]): void {
   }
 }
 
+/** Put the return edge of a two-way connection in an outer lane. */
+function separateReciprocalEdges(nodes: NodeBox[], routes: EdgeRoute[], direction: string): EdgeRoute[] {
+  const vertical = direction === "TD" || direction === "TB" || direction === "BT";
+  const axis = vertical ? "y" : "x";
+  const extent = vertical ? "height" : "width";
+  const forwardSign = direction === "BT" || direction === "RL" ? -1 : 1;
+  const handled = new Set<EdgeRoute>();
+  const forwardEdges: EdgeRoute[] = [];
+  for (const edge of routes) {
+    if (handled.has(edge)) continue;
+    const reverse = routes.find((candidate) => candidate.source === edge.target && candidate.target === edge.source);
+    if (!reverse) continue;
+    if (Boolean(edge.label) === Boolean(reverse.label)) {
+      handled.add(edge); handled.add(reverse);
+      continue;
+    }
+    const edgeMovesForward = (edge.target[axis] + edge.target[extent] / 2
+      - edge.source[axis] - edge.source[extent] / 2) * forwardSign >= EPSILON;
+    const feedback = edgeMovesForward ? reverse : edge;
+    const forwardEdge = edgeMovesForward ? edge : reverse;
+    const sourceCenter = forwardEdge.source[axis] + forwardEdge.source[extent] / 2;
+    const targetCenter = forwardEdge.target[axis] + forwardEdge.target[extent] / 2;
+    if ((targetCenter - sourceCenter) * forwardSign < EPSILON) continue;
+    handled.add(edge); handled.add(reverse);
+    const sideOptions: Side[] = vertical ? ["left", "right"] : ["top", "bottom"];
+    const obstacles = nodes.filter((node) => node !== feedback.source && node !== feedback.target)
+      .map((node) => inflate(node, CLEARANCE));
+    const candidates = sideOptions.map((side) => {
+      const start = port(feedback.source, side, 0.5), end = port(feedback.target, side, 0.5);
+      const startStub = stub(start, side), endStub = stub(end, side);
+      const lane = side === "left" ? Math.min(...nodes.map((node) => node.x)) - CLEARANCE - TERMINAL_DISTANCE
+        : side === "right" ? Math.max(...nodes.map((node) => node.x + node.width)) + CLEARANCE + TERMINAL_DISTANCE
+          : side === "top" ? Math.min(...nodes.map((node) => node.y)) - CLEARANCE - TERMINAL_DISTANCE
+            : Math.max(...nodes.map((node) => node.y + node.height)) + CLEARANCE + TERMINAL_DISTANCE;
+      const firstLane = vertical ? { x: lane, y: startStub.y } : { x: startStub.x, y: lane };
+      const secondLane = vertical ? { x: lane, y: endStub.y } : { x: endStub.x, y: lane };
+      const points = [start, startStub, firstLane, secondLane, endStub, end];
+      const clear = points.slice(1).every((point, index) => !obstacles.some((box) => crossesBox(points[index], point, box)));
+      return { side, clear, distance: points.slice(1).reduce((sum, point, index) => sum
+        + Math.abs(point.x - points[index].x) + Math.abs(point.y - points[index].y), 0) };
+    }).sort((a, b) => Number(b.clear) - Number(a.clear) || a.distance - b.distance);
+    const choice = candidates[0];
+    if (!choice?.clear) continue;
+    feedback.startSide = choice.side;
+    feedback.endSide = choice.side;
+    forwardEdges.push(forwardEdge);
+  }
+  return forwardEdges;
+}
+
+/** Align flow-facing ports when their nodes can share a clear straight lane. */
+function alignForwardPorts(nodes: NodeBox[], routes: EdgeRoute[], direction: string, eligible: Set<EdgeRoute>): void {
+  const vertical = direction === "TD" || direction === "TB" || direction === "BT";
+  const axis = vertical ? "y" : "x";
+  const cross = vertical ? "x" : "y";
+  const dimension = vertical ? "height" : "width";
+  const crossDimension = vertical ? "width" : "height";
+  const forwardSign = direction === "BT" || direction === "RL" ? -1 : 1;
+  const forward: Side = direction === "LR" ? "right" : direction === "RL" ? "left" : direction === "BT" ? "top" : "bottom";
+  const backward: Side = direction === "LR" ? "left" : direction === "RL" ? "right" : direction === "BT" ? "bottom" : "top";
+  for (const edge of routes) {
+    if (!eligible.has(edge) || edge.startSide !== forward || edge.endSide !== backward) continue;
+    const sourceCenter = edge.source[axis] + edge.source[dimension] / 2;
+    const targetCenter = edge.target[axis] + edge.target[dimension] / 2;
+    if ((targetCenter - sourceCenter) * forwardSign < TERMINAL_DISTANCE) continue;
+    const desired = edge.start[cross];
+    const margin = 5;
+    if (desired < edge.target[cross] + margin
+      || desired > edge.target[cross] + edge.target[crossDimension] - margin) {
+      const oldPosition = edge.target[cross], oldSize = edge.target[crossDimension];
+      const end = oldPosition + oldSize;
+      const newPosition = desired < oldPosition + margin ? desired - CLEARANCE : oldPosition;
+      const newEnd = desired > end - margin ? desired + CLEARANCE : end;
+      const newSize = newEnd - newPosition;
+      if (newSize <= oldSize || newSize > edge.target.original[crossDimension] * 3) continue;
+      const candidate = { ...edge.target, [cross]: newPosition, [crossDimension]: newSize };
+      if (nodes.some((node) => node !== edge.target && overlaps(candidate, inflate(node, CLEARANCE)))) continue;
+      for (const route of routes) {
+        for (const endpoint of ["start", "end"] as const) {
+          const node = endpoint === "start" ? route.source : route.target;
+          if (node !== edge.target) continue;
+          const side = endpoint === "start" ? route.startSide : route.endSide;
+          const usesCross = vertical ? side === "top" || side === "bottom" : side === "left" || side === "right";
+          if (!usesCross) continue;
+          const point = route[endpoint];
+          point[cross] = newPosition + ((point[cross] - oldPosition) / oldSize) * newSize;
+        }
+      }
+      edge.target[cross] = newPosition;
+      edge.target[crossDimension] = newSize;
+    }
+    const targetPorts = routes.filter((other) => other !== edge && (
+      other.source === edge.target && other.startSide === edge.endSide ? other.start
+        : other.target === edge.target && other.endSide === edge.endSide ? other.end : undefined
+    )).map((other) => other.source === edge.target ? other.start : other.end);
+    if (targetPorts.some((point) => Math.abs(point[cross] - desired) < EDGE_CLEARANCE - EPSILON)) continue;
+    edge.end[cross] = desired;
+  }
+}
+
+/** Keep Mermaid's node and cluster geometry, refining only the edges in grouped diagrams. */
+function refineSubgraphLayout(svg: SVGSVGElement, direction: string, subgraphs: FlowchartSubgraph[]): void {
+  const nodes: NodeBox[] = [];
+  for (const element of Array.from(svg.querySelectorAll<SVGGElement>("g.node"))) {
+    const rect = element.querySelector("rect");
+    if (!rect) return;
+    const original = rectBounds(rect);
+    if (original.width <= 0 || original.height <= 0) return;
+    nodes.push({ ...original, original, id: element.getAttribute("data-id") ?? "", element });
+  }
+  if (!nodes.length || nodes.length > 80) return;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const groups: FlowchartSubgraph[] = [];
+  const collectGroups = (items: FlowchartSubgraph[]): void => items.forEach((group) => {
+    groups.push(group);
+    if (group.children) collectGroups(group.children);
+  });
+  collectGroups(subgraphs);
+  const groupFor = (source: string, target: string): FlowchartSubgraph | undefined => groups
+    .filter((group) => group.nodeIds.includes(source) && group.nodeIds.includes(target))
+    .sort((a, b) => a.nodeIds.length - b.nodeIds.length)[0];
+  const groupBoxFor = (group: FlowchartSubgraph): RouteBox | undefined => {
+    if (!group.id) return undefined;
+    const element = Array.from(svg.querySelectorAll<SVGGElement>("g.subgraph"))
+      .find((candidate) => candidate.getAttribute("data-id") === group.id);
+    const rectangle = element?.querySelector<SVGRectElement>(":scope > rect");
+    return rectangle ? rectBounds(rectangle) : undefined;
+  };
+  const labels = Array.from(svg.querySelectorAll<SVGGElement>("g.edge-label"));
+  const routes: EdgeRoute[] = [];
+  for (const element of Array.from(svg.querySelectorAll<SVGPolylineElement>("polyline.edge"))) {
+    const source = byId.get(element.getAttribute("data-from") ?? "");
+    const target = byId.get(element.getAttribute("data-to") ?? "");
+    const points = edgePoints(element);
+    if (!source || !target || source === target || points.length < 2) return;
+    const labelElement = labels.find((label) => label.getAttribute("data-from") === source.id
+      && label.getAttribute("data-to") === target.id && label.getAttribute("data-label") === element.getAttribute("data-label"));
+    const labelRect = labelElement?.querySelector("rect");
+    const original = labelRect ? rectBounds(labelRect) : undefined;
+    routes.push({ element, source, target, points, start: points[0], end: points[points.length - 1],
+      startSide: sideAt(source, points[0]), endSide: sideAt(target, points[points.length - 1]),
+      label: original && labelElement ? { ...original, original, element: labelElement, aligned: false } : undefined });
+  }
+  if (!routes.length || routes.length > 150) return;
+
+  const opposite: Record<Side, Side> = { left: "right", right: "left", top: "bottom", bottom: "top" };
+  const preferredSides = (graphDirection: string): [Side, Side] => graphDirection === "LR" ? ["right", "left"]
+    : graphDirection === "RL" ? ["left", "right"] : graphDirection === "BT" ? ["top", "bottom"] : ["bottom", "top"];
+  const edgeDirection = (edge: EdgeRoute): string => groupFor(edge.source.id, edge.target.id)?.direction ?? direction;
+  const nodeObstacles = nodes.map((node) => inflate(node, CLEARANCE));
+  const reserved: RoutePoint[][] = [];
+  const handled = new Set<EdgeRoute>();
+  const center = (node: NodeBox, axis: "x" | "y"): number => node[axis] + node[axis === "x" ? "width" : "height"] / 2;
+  const makeStraight = (edge: EdgeRoute, vertical: boolean): boolean => {
+    const axis = vertical ? "y" : "x", cross = vertical ? "x" : "y";
+    const crossExtent = vertical ? "width" : "height";
+    const sourceCenter = center(edge.source, axis), targetCenter = center(edge.target, axis);
+    const sourceSide: Side = vertical ? (sourceCenter < targetCenter ? "bottom" : "top")
+      : sourceCenter < targetCenter ? "right" : "left";
+    const targetSide = opposite[sourceSide];
+    const low = Math.max(edge.source[cross], edge.target[cross]) + 7;
+    const high = Math.min(edge.source[cross] + edge.source[crossExtent], edge.target[cross] + edge.target[crossExtent]) - 7;
+    if (high < low || Math.abs(sourceCenter - targetCenter) < TERMINAL_DISTANCE) return false;
+    const oldCross = (edge.start[cross] + edge.end[cross]) / 2;
+    const coordinate = Math.max(low, Math.min(high, oldCross));
+    const start = port(edge.source, sourceSide, (coordinate - edge.source[cross]) / edge.source[crossExtent]);
+    const end = port(edge.target, targetSide, (coordinate - edge.target[cross]) / edge.target[crossExtent]);
+    if (nodes.some((node) => node !== edge.source && node !== edge.target && crossesBox(start, end, inflate(node, 2)))) return false;
+    edge.startSide = sourceSide; edge.endSide = targetSide;
+    edge.start = start; edge.end = end; edge.points = [start, end];
+    return true;
+  };
+  const laneFeedback = (edge: EdgeRoute, vertical: boolean, groupBox?: RouteBox): boolean => {
+    const preferredLane: Side = vertical
+      ? (direction === "RL" ? "left" : "right")
+      : (direction === "BT" || direction === "RL" ? "top" : "bottom");
+    const sides: Side[] = vertical ? [preferredLane, preferredLane === "left" ? "right" : "left"]
+      : [preferredLane, preferredLane === "top" ? "bottom" : "top"];
+    const candidates = sides.map((side) => {
+      const start = port(edge.source, side, 0.5), end = port(edge.target, side, 0.5);
+      const startStub = stub(start, side), endStub = stub(end, side);
+      const lane = side === "left" ? Math.min(edge.source.x, edge.target.x, groupBox?.x ?? Infinity) - TERMINAL_DISTANCE - CLEARANCE
+        : side === "right" ? Math.max(edge.source.x + edge.source.width, edge.target.x + edge.target.width,
+          groupBox ? groupBox.x + groupBox.width : -Infinity) + TERMINAL_DISTANCE + CLEARANCE
+          : side === "top" ? Math.min(edge.source.y, edge.target.y, groupBox?.y ?? Infinity) - TERMINAL_DISTANCE - CLEARANCE
+            : Math.max(edge.source.y + edge.source.height, edge.target.y + edge.target.height,
+              groupBox ? groupBox.y + groupBox.height : -Infinity) + TERMINAL_DISTANCE + CLEARANCE;
+      const firstLane = vertical ? { x: lane, y: startStub.y } : { x: startStub.x, y: lane };
+      const secondLane = vertical ? { x: lane, y: endStub.y } : { x: endStub.x, y: lane };
+      const points = simplify([start, startStub, firstLane, secondLane, endStub, end]);
+      const obstacles = nodes.filter((node) => node !== edge.source && node !== edge.target).map((node) => inflate(node, 2));
+      const clear = points.slice(1).every((point, index) => !obstacles.some((box) => crossesBox(points[index], point, box)));
+      const length = points.slice(1).reduce((sum, point, index) => sum
+        + Math.abs(point.x - points[index].x) + Math.abs(point.y - points[index].y), 0);
+      const traffic = reserved.reduce((sum, path) => sum + points.slice(1).reduce((pathSum, point, index) =>
+        pathSum + trafficCost(points[index], point, [path]), 0), 0);
+      return { side, points, clear, cost: length + traffic + (side === preferredLane ? 0 : 48) };
+    }).filter((candidate) => candidate.clear).sort((a, b) => a.cost - b.cost);
+    const chosen = candidates[0];
+    if (!chosen) return false;
+    edge.startSide = chosen.side; edge.endSide = chosen.side;
+    edge.start = chosen.points[0]; edge.end = chosen.points[chosen.points.length - 1]; edge.points = chosen.points;
+    reserved.push(edge.points);
+    return true;
+  };
+
+  // In a local subgraph, keep the labelled branch direct and send its return edge
+  // around the pair on a separate lane.
+  for (const edge of routes) {
+    if (handled.has(edge) || !groupFor(edge.source.id, edge.target.id)) continue;
+    const reverse = routes.find((candidate) => candidate.source === edge.target && candidate.target === edge.source);
+    if (!reverse || Boolean(edge.label) === Boolean(reverse.label)) continue;
+    const branch = edge.label ? edge : reverse;
+    const feedback = branch === edge ? reverse : edge;
+    const vertical = Math.abs(center(branch.source, "y") - center(branch.target, "y"))
+      >= Math.abs(center(branch.source, "x") - center(branch.target, "x"));
+    if (!makeStraight(branch, vertical) || !laneFeedback(feedback, vertical, groupBoxFor(groupFor(edge.source.id, edge.target.id)!))) return;
+    reserved.push(branch.points);
+    handled.add(branch); handled.add(feedback);
+  }
+
+  const ordered = [...routes].filter((edge) => !handled.has(edge)).sort((a, b) => {
+    const span = (edge: EdgeRoute): number => Math.abs(edge.start.x - edge.end.x) + Math.abs(edge.start.y - edge.end.y);
+    return span(a) - span(b);
+  });
+  for (const edge of ordered) {
+    const graphDirection = edgeDirection(edge);
+    const vertical = graphDirection === "TD" || graphDirection === "TB" || graphDirection === "BT";
+    if (makeStraight(edge, vertical)) {
+      handled.add(edge);
+      reserved.push(edge.points);
+    }
+  }
+  for (const edge of ordered.filter((candidate) => !handled.has(candidate))) {
+    const [preferredStart, preferredEnd] = preferredSides(edgeDirection(edge));
+    const obstacles = nodeObstacles.filter((_, index) => nodes[index] !== edge.source && nodes[index] !== edge.target);
+    const candidates: { startSide: Side; endSide: Side; points: RoutePoint[]; cost: number }[] = [];
+    for (const startSide of [preferredStart, "left", "right", "top", "bottom"] as Side[]) {
+      for (const endSide of [preferredEnd, "left", "right", "top", "bottom"] as Side[]) {
+        const start = port(edge.source, startSide, 0.5), end = port(edge.target, endSide, 0.5);
+        const startIsVertical = startSide === "top" || startSide === "bottom";
+        const endIsVertical = endSide === "top" || endSide === "bottom";
+        if (startIsVertical && !endIsVertical) {
+          const alignedY = stub(start, startSide).y;
+          if (alignedY >= edge.target.y + 7 && alignedY <= edge.target.y + edge.target.height - 7) {
+            end.y = alignedY;
+          }
+        } else if (!startIsVertical && endIsVertical) {
+          const alignedX = stub(end, endSide).x;
+          if (alignedX >= edge.source.x + 7 && alignedX <= edge.source.x + edge.source.width - 7) {
+            start.x = alignedX;
+          }
+        }
+        const routed = routeOrthogonally(stub(start, startSide), stub(end, endSide), obstacles, {
+          startDirection: startSide, endDirection: opposite[endSide], occupiedPaths: reserved
+        });
+        if (!routed) continue;
+        const points = simplify([start, ...routed, end]);
+        const length = points.slice(1).reduce((sum, point, index) => sum
+          + Math.abs(point.x - points[index].x) + Math.abs(point.y - points[index].y), 0);
+        const bends = Math.max(0, points.length - 2);
+        const deviation = (startSide === preferredStart ? 0 : 600) + (endSide === preferredEnd ? 0 : 600);
+        candidates.push({ startSide, endSide, points, cost: bends * 1000 + length + deviation });
+      }
+    }
+    const chosen = candidates.sort((a, b) => a.cost - b.cost)[0];
+    if (!chosen) return;
+    edge.startSide = chosen.startSide; edge.endSide = chosen.endSide;
+    edge.start = chosen.points[0]; edge.end = chosen.points[chosen.points.length - 1]; edge.points = chosen.points;
+    reserved.push(edge.points);
+  }
+
+  const placedLabels: LabelBox[] = [];
+  for (const edge of routes) {
+    if (!edge.label) continue;
+    const candidates = edge.points.slice(1).map((point, index) => {
+      const previous = edge.points[index];
+      const horizontal = Math.abs(point.y - previous.y) < EPSILON;
+      const length = Math.abs(point.x - previous.x) + Math.abs(point.y - previous.y);
+      const fits = length >= (horizontal ? edge.label!.width : edge.label!.height) + 12;
+      return { x: (point.x + previous.x) / 2 - edge.label!.width / 2,
+        y: (point.y + previous.y) / 2 - edge.label!.height / 2, width: edge.label!.width, height: edge.label!.height, fits };
+    }).filter((candidate) => candidate.fits && !nodes.some((node) => overlaps(candidate, inflate(node, 8)))
+      && !placedLabels.some((label) => overlaps(candidate, inflate(label, 8))))
+      .sort((a, b) => {
+        const midpoint = (candidate: RouteBox): number => Math.abs(candidate.x + candidate.width / 2 - (edge.start.x + edge.end.x) / 2)
+          + Math.abs(candidate.y + candidate.height / 2 - (edge.start.y + edge.end.y) / 2);
+        return midpoint(a) - midpoint(b);
+      });
+    const chosen = candidates[0];
+    if (!chosen) return;
+    edge.label.x = chosen.x; edge.label.y = chosen.y; edge.label.aligned = true;
+    placedLabels.push(edge.label);
+  }
+
+  const bounds: RouteBox[] = [...nodes, ...placedLabels,
+    ...routes.flatMap((edge) => edge.points.map((point) => ({ ...point, width: 0, height: 0 }))),
+    ...Array.from(svg.querySelectorAll<SVGRectElement>("g.subgraph > rect:first-of-type"), rectBounds)];
+  const x = Math.min(...bounds.map((box) => box.x)) - 8, y = Math.min(...bounds.map((box) => box.y)) - 8;
+  const width = Math.max(...bounds.map((box) => box.x + box.width)) - x + 8;
+  const height = Math.max(...bounds.map((box) => box.y + box.height)) - y + 8;
+  for (const edge of routes) {
+    edge.element.setAttribute("points", edge.points.map((point) => `${point.x},${point.y}`).join(" "));
+    edge.element.setAttribute("stroke-linejoin", "round");
+    if (edge.label) edge.label.element.setAttribute("transform", `translate(${edge.label.x - edge.label.original.x},${edge.label.y - edge.label.original.y})`);
+  }
+  svg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+  svg.setAttribute("width", String(width)); svg.setAttribute("height", String(height));
+  svg.setAttribute("data-layout-refined", "true");
+}
+
 /** Refine flat rectangular flowcharts transactionally; other layouts retain library geometry. */
-export function refineFlowchartLayout(svg: SVGSVGElement, direction: string): void {
-  if (svg.querySelector(".subgraph")) return;
+export function refineFlowchartLayout(svg: SVGSVGElement, direction: string, subgraphs: FlowchartSubgraph[] = []): void {
+  if (svg.querySelector(".subgraph")) {
+    refineSubgraphLayout(svg, direction, subgraphs);
+    return;
+  }
   const nodes: NodeBox[] = [];
   for (const element of Array.from(svg.querySelectorAll<SVGGElement>("g.node"))) {
     const rect = element.querySelector("rect");
@@ -346,6 +671,9 @@ export function refineFlowchartLayout(svg: SVGSVGElement, direction: string): vo
     node[crossAxis] += (node[crossAxis] + node[crossDimension] / 2 - crossCenter) * crossExpansion;
   }
 
+  const supportsForwardFeedback = direction === "TD" || direction === "TB" || direction === "LR";
+  const reciprocalForward = new Set(supportsForwardFeedback ? separateReciprocalEdges(nodes, routes, direction) : []);
+
   // Allocate incoming and outgoing ports together so they cannot share a stem.
   for (const node of nodes) for (const side of ["left", "right", "top", "bottom"] as Side[]) {
     const group = routes.filter((edge) => (edge.source === node && edge.startSide === side) || (edge.target === node && edge.endSide === side));
@@ -361,7 +689,8 @@ export function refineFlowchartLayout(svg: SVGSVGElement, direction: string): vo
       if (edge.source === node) edge.start = point; else edge.end = point;
     });
   }
-  if (vertical) widenBypassTargets(nodes, routes);
+  widenBypassTargets(nodes, routes, direction);
+  alignForwardPorts(nodes, routes, direction, reciprocalForward);
   const oppositeSide: Record<Side, Side> = { left: "right", right: "left", top: "bottom", bottom: "top" };
   // Align facing ports where a clear corridor exists. Tiny offsets otherwise
   // force unnecessary doglegs just to satisfy the minimum bend distance.
@@ -496,10 +825,17 @@ export function refineFlowchartLayout(svg: SVGSVGElement, direction: string): vo
   // Commit only a complete, valid layout; no partially shifted diagrams.
   nodes.forEach((node) => {
     node.element.setAttribute("transform", `translate(${node.x - node.original.x},${node.y - node.original.y})`);
-    if (node.width === node.original.width) return;
-    node.element.querySelector("rect")?.setAttribute("width", String(node.width));
-    for (const text of Array.from(node.element.querySelectorAll("text[x], tspan[x]"))) {
-      text.setAttribute("x", String(Number(text.getAttribute("x")) + (node.width - node.original.width) / 2));
+    if (node.width !== node.original.width) {
+      node.element.querySelector("rect")?.setAttribute("width", String(node.width));
+      for (const text of Array.from(node.element.querySelectorAll("text[x], tspan[x]"))) {
+        text.setAttribute("x", String(Number(text.getAttribute("x")) + (node.width - node.original.width) / 2));
+      }
+    }
+    if (node.height !== node.original.height) {
+      node.element.querySelector("rect")?.setAttribute("height", String(node.height));
+      for (const text of Array.from(node.element.querySelectorAll("text[y], tspan[y]"))) {
+        text.setAttribute("y", String(Number(text.getAttribute("y")) + (node.height - node.original.height) / 2));
+      }
     }
   });
   for (const edge of routes) {

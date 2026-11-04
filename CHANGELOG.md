@@ -9,7 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Spread crowded flowchart columns and add rank spacing only where turns compete for a lane, reducing feedback-loop bends while keeping straight chains compact.
+- Route labelled branches and reciprocal feedback edges through separate low-bend lanes in top-down and left-to-right flowcharts.
 - Widen rectangular targets within available space to straighten labelled bypass branches without enlarging the diagram.
+- Preserve subgraph geometry while routing orthogonal connections across group boundaries and local directions.
 
 ## [0.3.0] - 2026-11-03
 ### Added
